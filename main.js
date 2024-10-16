@@ -6,6 +6,7 @@ export const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 })
 
+// test
 
 
 const response = await openai.chat.completions.create({
