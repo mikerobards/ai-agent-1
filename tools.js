@@ -1,8 +1,8 @@
 export async function getCurrentWeather() {
     const weather = {
-        temperature: "72",
+        temperature: "2",
         unit: "F",
-        forecast: "Sunny"
+        forecast: "Snowy"
     }
     return JSON.stringify(weather)
 

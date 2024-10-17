@@ -7,6 +7,11 @@ export const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 })
 
+const availableFunctions = {
+  getCurrentWeather,
+  getLocation
+}
+
 /**
  * Goal - build an agent that can answer any questions that might require knowledge about my 
  * current location and the current weather at my location.
@@ -61,28 +66,53 @@ Answer: <Suggested activities based on sunny weather that are highly specific to
 `
 
 async function agent(query) {
+  const messages = [
+    {
+      role: "system",
+      content: systemPrompt
+    },
+    {
+      role: "user",
+      content: query
+    }
+  ]
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      {
-        role: "user",
-        content: query
+  const MAX_ITERATIONS = 5
+  const actionRegex = /^Action: (\w+): (.*)$/
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    console.log(`Iteration #:${i + 1}`)
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages
+    })
+
+    const responseText = response.choices[0].message.content
+    console.log(responseText)
+    messages.push({ role: "assistant", content: responseText })
+    const responseLines = responseText.split("\n")
+
+    const foundActionStr = responseLines.find(str => actionRegex.test(str))
+
+    if (foundActionStr) {
+      const actions = actionRegex["exec"](foundActionStr)
+      const [_, action, actionArg] = actions
+      if (!availableFunctions.hasOwnProperty(action)) {
+        throw new Error(`Unknown action: ${action}: ${actionArg}`)
       }
-    ]
-  })
-  const chatgpt = response.choices[0].message.content
-
-  document.getElementById("text-box").textContent = chatgpt
-
-  console.log(chatgpt)
+      console.log(`Calling function ${action} with argument ${actionArg}`)
+      const observation = await availableFunctions[action](actionArg)
+      messages.push({ role: "assistant", content: `Observation: ${observation}` })
+      console.log(observation)
+    } else {
+      console.log("Agent finished with task!")
+      document.getElementById("text-box").textContent = `Question: ${query} ${responseText}`
+      return responseText
+    }
+  }
 }
 
-agent('What is the current weather in Kennesaw, Georgia?')
+console.log(await agent('What are some activity ideas that I can do this afternoon based on my location and weather?'))
 
 
 
