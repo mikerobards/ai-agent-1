@@ -1,16 +1,16 @@
 import './style.css'
 import OpenAI from 'openai'
-import { getCurrentWeather, getLocation } from './tools'
+import { tools } from './tools'
 
 export const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 })
 
-const availableFunctions = {
-  getCurrentWeather,
-  getLocation
-}
+// const availableFunctions = {
+//   getCurrentWeather,
+//   getLocation
+// }
 
 /**
  * Goal - build an agent that can answer any questions that might require knowledge about my 
@@ -39,22 +39,19 @@ async function agent(query) {
     }
   ]
 
-  const MAX_ITERATIONS = 5
-
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
-    console.log(`Iteration #:${i + 1}`)
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+  const runner = openai.beta.chat.completions.runTools(
+    {
+      model: "gpt-3.5-turbo-1106",
       messages,
-      tools: []
-    })
+      tools,
+    }
+  ).on('message', (message) => console.log(message))
 
-    const responseText = response.choices[0].message.content
-    console.log(responseText)
-  }
+  const finalContent = await runner.finalContent()
+  console.log(finalContent)
+
 }
 
-console.log(await agent('What are some activity ideas that I can do this afternoon based on my location and weather?'))
-
+await agent("What is my local weather?")
 
 
