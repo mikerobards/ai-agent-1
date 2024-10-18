@@ -1,43 +1,39 @@
 import './style.css'
 import OpenAI from 'openai'
-import { tools } from './tools'
+import { getCurrentWeather, getLocation, tools } from './tools'
+import { renderNewMessage } from "./dom"
+
 
 export const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 })
 
-// const availableFunctions = {
-//   getCurrentWeather,
-//   getLocation
-// }
+const availableFunctions = {
+  getCurrentWeather,
+  getLocation
+}
 
-/**
- * Goal - build an agent that can answer any questions that might require knowledge about my 
- * current location and the current weather at my location.
- */
-
-/**
- * PLAN:
- * 1. Design a well-written ReAct prompt
- * 2. Build a loop for my agent to run in.
- * 3. Parse any actions that the LLM determines are necessary
- * 4. End condition - final Answer is given
- */
-
+const messages = [
+  {
+    role: "system",
+    content: `You are a helpful AI agent. Transform technical data into engaging, 
+    conversational responses, but only include the normal information a 
+    regular person might want unless they explicitly ask for more. Provide 
+    highly specific answers based on the information you're given. Prefer 
+    to gather information with the tools provided to you rather than 
+    giving basic, generic answers .`
+  },
+]
 
 async function agent(query) {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a helpful AI agent. Give highly specific answers based on the information you're provided. 
-      Prefer to gather information with the tools provided to you rather than giving basic, generic answers.`
-    },
+  messages.push(
     {
       role: "user",
       content: query
     }
-  ]
+  )
+  renderNewMessage(query, "user")
 
   const runner = openai.beta.chat.completions.runTools(
     {
@@ -50,8 +46,19 @@ async function agent(query) {
   const finalContent = await runner.finalContent()
   console.log(finalContent)
 
+  messages.push({ role: "system", content: finalContent })
+
+  renderNewMessage(finalContent, "assistant")
+
 }
 
-await agent("What is my local weather?")
-
+document.getElementById("form").addEventListener("submit", async function (event) {
+  event.preventDefault()
+  const inputElement = document.getElementById("user-input")
+  inputElement.focus()
+  const formData = new FormData(event.target)
+  const query = formData.get("user-input")
+  event.target.reset()
+  await agent(query)
+})
 
